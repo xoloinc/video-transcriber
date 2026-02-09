@@ -37,7 +37,7 @@ jobs:
           pip install openai tkinterdnd2 imageio-ffmpeg pyinstaller
 
       - name: Verify ffmpeg is found
-        run: python -c "import imageio_ffmpeg; import os; p=imageio_ffmpeg.get_ffmpeg_exe(); print(f'ffmpeg: {p} ({os.path.getsize(p)/1024/1024:.1f} MB)')"
+        run: python -c "import imageio_ffmpeg, os; p=imageio_ffmpeg.get_ffmpeg_exe(); s=os.path.getsize(p)/1024/1024; print('ffmpeg:', p, round(s,1), 'MB')"
 
       - name: Build with PyInstaller
         run: pyinstaller build.spec --clean
