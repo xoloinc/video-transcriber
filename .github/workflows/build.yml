@@ -34,14 +34,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install openai tkinterdnd2 pyinstaller
 
-      - name: Download ffmpeg (macOS)
+      - name: Get ffmpeg (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          curl -L "https://evermeet.cx/ffmpeg/getrelease" -o ffmpeg.zip
-          unzip ffmpeg.zip
+          brew install ffmpeg
+          cp $(which ffmpeg) ./ffmpeg
           chmod +x ffmpeg
           ls -lh ffmpeg
-          echo "ffmpeg size: $(du -h ffmpeg | cut -f1)"
 
       - name: Download ffmpeg (Windows)
         if: matrix.os == 'windows-latest'
