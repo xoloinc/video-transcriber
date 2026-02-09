@@ -52,6 +52,18 @@ jobs:
           Copy-Item $ffmpegExe.FullName -Destination "ffmpeg.exe"
           Write-Host "ffmpeg.exe size: $((Get-Item ffmpeg.exe).Length / 1MB) MB"
 
+      - name: Inject API key
+        shell: bash
+        env:
+          OPENAI_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_KEY" ]; then
+            sed -i.bak "s|__OPENAI_API_KEY__|$OPENAI_KEY|g" transcriber.py
+            echo "API key injected"
+          else
+            echo "WARNING: No OPENAI_API_KEY secret set"
+          fi
+
       - name: Build with PyInstaller
         run: pyinstaller build.spec --clean
 

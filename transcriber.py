@@ -38,6 +38,9 @@ def _find_ffmpeg():
 
 FFMPEG_PATH = _find_ffmpeg()
 
+# Inbyggd API-nyckel (injiceras vid bygge via GitHub Actions)
+BUILTIN_API_KEY = "__OPENAI_API_KEY__"
+
 
 class VideoTranscriberApp:
     def __init__(self, root):
@@ -46,7 +49,8 @@ class VideoTranscriberApp:
         self.root.geometry("500x400")
         self.root.configure(bg="#2b2b2b")
 
-        self.api_key = tk.StringVar()
+        self.has_builtin_key = BUILTIN_API_KEY and not BUILTIN_API_KEY.startswith("__")
+        self.api_key = tk.StringVar(value=BUILTIN_API_KEY if self.has_builtin_key else "")
         self.status_var = tk.StringVar(value="Dra och släpp en videofil här")
         self.progress_var = tk.DoubleVar(value=0)
 
@@ -54,13 +58,13 @@ class VideoTranscriberApp:
         self.setup_drag_drop()
 
     def setup_ui(self):
-        # API-nyckel sektion
-        api_frame = ttk.Frame(self.root, padding=10)
-        api_frame.pack(fill="x")
-
-        ttk.Label(api_frame, text="OpenAI API-nyckel:").pack(anchor="w")
-        api_entry = ttk.Entry(api_frame, textvariable=self.api_key, show="*", width=50)
-        api_entry.pack(fill="x", pady=5)
+        # Visa API-nyckel-fältet bara om ingen nyckel är inbyggd
+        if not self.has_builtin_key:
+            api_frame = ttk.Frame(self.root, padding=10)
+            api_frame.pack(fill="x")
+            ttk.Label(api_frame, text="OpenAI API-nyckel:").pack(anchor="w")
+            api_entry = ttk.Entry(api_frame, textvariable=self.api_key, show="*", width=50)
+            api_entry.pack(fill="x", pady=5)
 
         # Drop-zon
         self.drop_frame = tk.Frame(
