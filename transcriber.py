@@ -243,7 +243,7 @@ class VideoTranscriberApp:
         return audio_path
 
     def transcribe_audio(self, audio_path):
-        """Transkriberar ljud med OpenAI Whisper API."""
+        """Transkriberar ljud med OpenAI Whisper API (ord-nivå precision)."""
         client = OpenAI(api_key=self.api_key.get().strip())
 
         with open(audio_path, "rb") as audio_file:
@@ -251,10 +251,42 @@ class VideoTranscriberApp:
                 model="whisper-1",
                 file=audio_file,
                 response_format="verbose_json",
-                timestamp_granularities=["segment"]
+                timestamp_granularities=["word"]
             )
 
-        return response.segments
+        return self.group_words_to_segments(response.words)
+
+    def group_words_to_segments(self, words, max_words=10, max_duration=5.0):
+        """Grupperar ord till undertextsegment med exakta timestamps."""
+        segments = []
+        current_words = []
+        segment_start = None
+
+        for word in words:
+            if segment_start is None:
+                segment_start = word.start
+
+            current_words.append(word.word.strip())
+            duration = word.end - segment_start
+
+            if len(current_words) >= max_words or duration >= max_duration:
+                segments.append({
+                    "start": segment_start,
+                    "end": word.end,
+                    "text": " ".join(current_words)
+                })
+                current_words = []
+                segment_start = None
+
+        # Sista segmentet
+        if current_words:
+            segments.append({
+                "start": segment_start,
+                "end": words[-1].end,
+                "text": " ".join(current_words)
+            })
+
+        return segments
 
     def format_timestamp(self, seconds):
         """Konverterar sekunder till SRT-timestamp format (HH:MM:SS,mmm)."""
@@ -268,9 +300,9 @@ class VideoTranscriberApp:
         """Skapar SRT-fil från transkriberade segment."""
         with open(output_path, "w", encoding="utf-8") as f:
             for i, segment in enumerate(segments, 1):
-                start = self.format_timestamp(segment.start)
-                end = self.format_timestamp(segment.end)
-                text = segment.text.strip()
+                start = self.format_timestamp(segment["start"])
+                end = self.format_timestamp(segment["end"])
+                text = segment["text"].strip()
 
                 f.write(f"{i}\n")
                 f.write(f"{start} --> {end}\n")
