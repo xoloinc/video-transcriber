@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # Manuell trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,10 +14,8 @@ jobs:
         include:
           - os: macos-latest
             name: macOS
-            artifact: "Video till Undertexter.app"
           - os: windows-latest
             name: Windows
-            artifact: VideoTillUndertexter.exe
 
     runs-on: ${{ matrix.os }}
     name: Build for ${{ matrix.name }}
@@ -31,32 +29,47 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install openai tkinterdnd2 imageio-ffmpeg pyinstaller
+          pip install openai tkinterdnd2 pyinstaller
 
-      - name: Verify ffmpeg is found
-        run: python -c "import imageio_ffmpeg, os; p=imageio_ffmpeg.get_ffmpeg_exe(); s=os.path.getsize(p)/1024/1024; print('ffmpeg:', p, round(s,1), 'MB')"
+      - name: Download ffmpeg (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          curl -L "https://evermeet.cx/ffmpeg/getrelease" -o ffmpeg.zip
+          unzip ffmpeg.zip
+          chmod +x ffmpeg
+          ls -lh ffmpeg
+          echo "ffmpeg size: $(du -h ffmpeg | cut -f1)"
+
+      - name: Download ffmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg-release.zip
+          Expand-Archive ffmpeg-release.zip -DestinationPath ffmpeg-temp
+          $ffmpegExe = Get-ChildItem -Path ffmpeg-temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          Copy-Item $ffmpegExe.FullName -Destination "ffmpeg.exe"
+          Write-Host "ffmpeg.exe size: $((Get-Item ffmpeg.exe).Length / 1MB) MB"
 
       - name: Build with PyInstaller
         run: pyinstaller build.spec --clean
 
-      - name: Verify build size
-        shell: bash
+      - name: Verify build (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
-          echo "=== Build contents ==="
-          du -sh dist/*
-          if [ -d "dist/Video till Undertexter.app" ]; then
-            echo "=== App bundle size ==="
-            du -sh "dist/Video till Undertexter.app"
-            echo "=== Checking for ffmpeg inside app ==="
-            find "dist/Video till Undertexter.app" -name "ffmpeg*" -exec ls -lh {} \;
-          fi
-          if [ -f "dist/VideoTillUndertexter.exe" ]; then
-            echo "=== EXE size ==="
-            ls -lh dist/VideoTillUndertexter.exe
-          fi
+          echo "=== App size ==="
+          du -sh "dist/Video till Undertexter.app"
+          echo "=== ffmpeg in bundle? ==="
+          find "dist/Video till Undertexter.app" -name "ffmpeg" -exec ls -lh {} \;
+
+      - name: Verify build (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $size = (Get-Item "dist/VideoTillUndertexter.exe").Length / 1MB
+          Write-Host "EXE size: $size MB"
 
       - name: Create ZIP (macOS)
         if: matrix.os == 'macos-latest'
@@ -88,9 +101,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Display structure
-        run: ls -R artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

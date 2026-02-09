@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec-fil - fungerar på Mac, Windows och Linux
+PyInstaller spec-fil
 Kör: pyinstaller build.spec
 """
 
@@ -10,23 +10,23 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Hitta ffmpeg-binären explicit
-import imageio_ffmpeg
-ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-print(f"=== ffmpeg hittad: {ffmpeg_exe} ({os.path.getsize(ffmpeg_exe) / 1024 / 1024:.1f} MB) ===")
-
-# Samla alla nödvändiga data-filer
+# Samla data-filer
 datas = []
 datas += collect_data_files('tkinterdnd2')
-datas += collect_data_files('imageio_ffmpeg')
 
-# Inkludera ffmpeg-binären explicit som binär
-binaries_list = [(ffmpeg_exe, 'imageio_ffmpeg/binaries')]
+# ffmpeg-binär läggs till via workflow (finns i ./ffmpeg eller ./ffmpeg.exe)
+binaries_list = []
+if os.path.exists('ffmpeg'):
+    binaries_list.append(('ffmpeg', '.'))
+    print(f"=== Inkluderar ffmpeg: {os.path.getsize('ffmpeg')/1024/1024:.1f} MB ===")
+elif os.path.exists('ffmpeg.exe'):
+    binaries_list.append(('ffmpeg.exe', '.'))
+    print(f"=== Inkluderar ffmpeg.exe: {os.path.getsize('ffmpeg.exe')/1024/1024:.1f} MB ===")
+else:
+    print("=== VARNING: Ingen ffmpeg-binär hittad! ===")
 
 # Samla submoduler
-hiddenimports = []
-hiddenimports += collect_submodules('openai')
-hiddenimports += ['imageio_ffmpeg', 'imageio_ffmpeg.binaries']
+hiddenimports = collect_submodules('openai')
 
 a = Analysis(
     ['transcriber.py'],
@@ -37,7 +37,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['imageio_ffmpeg'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -60,7 +60,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Ingen terminal-fönster
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=True if sys.platform == 'darwin' else False,
     target_arch=None,
@@ -68,12 +68,12 @@ exe = EXE(
     entitlements_file=None,
 )
 
-# macOS-specifik: Skapa .app bundle
+# macOS: Skapa .app bundle
 if sys.platform == 'darwin':
     app = BUNDLE(
         exe,
         name='Video till Undertexter.app',
-        icon=None,  # Lägg till .icns här
+        icon=None,
         bundle_identifier='com.videotranscriber.app',
         info_plist={
             'NSHighResolutionCapable': True,

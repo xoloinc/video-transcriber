@@ -3,6 +3,7 @@ Video till Undertexter - Transkriberar video med OpenAI Whisper API
 Dra och släpp en videofil för att generera SRT-undertexter.
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
@@ -17,12 +18,25 @@ try:
 except ImportError:
     OpenAI = None
 
-# Inbyggd ffmpeg via imageio-ffmpeg
-try:
-    import imageio_ffmpeg
-    FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
-except ImportError:
-    FFMPEG_PATH = "ffmpeg"  # Fallback till system ffmpeg
+def _find_ffmpeg():
+    """Hittar ffmpeg - antingen inbyggd bredvid exe:n eller i systemet."""
+    # Om vi kör som PyInstaller-bundle, leta bredvid exe:n
+    if getattr(sys, 'frozen', False):
+        bundle_dir = Path(sys._MEIPASS)
+        for name in ('ffmpeg', 'ffmpeg.exe'):
+            p = bundle_dir / name
+            if p.exists():
+                return str(p)
+    # Fallback: imageio-ffmpeg
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        pass
+    # Fallback: system ffmpeg
+    return "ffmpeg"
+
+FFMPEG_PATH = _find_ffmpeg()
 
 
 class VideoTranscriberApp:
