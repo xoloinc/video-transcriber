@@ -268,9 +268,9 @@ class VideoTranscriberApp:
         """Skapar SRT-fil från transkriberade segment."""
         with open(output_path, "w", encoding="utf-8") as f:
             for i, segment in enumerate(segments, 1):
-                start = self.format_timestamp(segment["start"])
-                end = self.format_timestamp(segment["end"])
-                text = segment["text"].strip()
+                start = self.format_timestamp(segment.start)
+                end = self.format_timestamp(segment.end)
+                text = segment.text.strip()
 
                 f.write(f"{i}\n")
                 f.write(f"{start} --> {end}\n")
