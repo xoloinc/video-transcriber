@@ -36,8 +36,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install openai tkinterdnd2 imageio-ffmpeg pyinstaller
 
+      - name: Verify ffmpeg is found
+        run: python -c "import imageio_ffmpeg; import os; p=imageio_ffmpeg.get_ffmpeg_exe(); print(f'ffmpeg: {p} ({os.path.getsize(p)/1024/1024:.1f} MB)')"
+
       - name: Build with PyInstaller
         run: pyinstaller build.spec --clean
+
+      - name: Verify build size
+        shell: bash
+        run: |
+          echo "=== Build contents ==="
+          du -sh dist/*
+          if [ -d "dist/Video till Undertexter.app" ]; then
+            echo "=== App bundle size ==="
+            du -sh "dist/Video till Undertexter.app"
+            echo "=== Checking for ffmpeg inside app ==="
+            find "dist/Video till Undertexter.app" -name "ffmpeg*" -exec ls -lh {} \;
+          fi
+          if [ -f "dist/VideoTillUndertexter.exe" ]; then
+            echo "=== EXE size ==="
+            ls -lh dist/VideoTillUndertexter.exe
+          fi
 
       - name: Create ZIP (macOS)
         if: matrix.os == 'macos-latest'

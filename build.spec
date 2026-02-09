@@ -5,24 +5,33 @@ Kör: pyinstaller build.spec
 """
 
 import sys
+import os
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
+# Hitta ffmpeg-binären explicit
+import imageio_ffmpeg
+ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+print(f"=== ffmpeg hittad: {ffmpeg_exe} ({os.path.getsize(ffmpeg_exe) / 1024 / 1024:.1f} MB) ===")
+
 # Samla alla nödvändiga data-filer
 datas = []
 datas += collect_data_files('tkinterdnd2')
-datas += collect_data_files('imageio_ffmpeg')  # Inkluderar ffmpeg-binären!
+datas += collect_data_files('imageio_ffmpeg')
+
+# Inkludera ffmpeg-binären explicit som binär
+binaries_list = [(ffmpeg_exe, 'imageio_ffmpeg/binaries')]
 
 # Samla submoduler
 hiddenimports = []
 hiddenimports += collect_submodules('openai')
-hiddenimports += ['imageio_ffmpeg']
+hiddenimports += ['imageio_ffmpeg', 'imageio_ffmpeg.binaries']
 
 a = Analysis(
     ['transcriber.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries_list,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
