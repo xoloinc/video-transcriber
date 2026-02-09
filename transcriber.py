@@ -260,23 +260,42 @@ class VideoTranscriberApp:
 
         return self.group_words_to_segments(response.words)
 
-    def group_words_to_segments(self, words, max_words=10, max_duration=5.0):
-        """Grupperar ord till undertextsegment med exakta timestamps."""
+    def group_words_to_segments(self, words, max_words=8, max_duration=4.0,
+                                pause_threshold=0.7):
+        """Grupperar ord till undertextsegment. Delar på pauser (nya talare)."""
         segments = []
         current_words = []
         segment_start = None
+        prev_end = None
 
         for word in words:
+            word_start = word.start
+            word_text = word.word.strip()
+
+            # Ny segment vid paus (troligt talarbyte eller ny mening)
+            if prev_end is not None and current_words:
+                gap = word_start - prev_end
+                if gap >= pause_threshold:
+                    segments.append({
+                        "start": segment_start,
+                        "end": prev_end,
+                        "text": " ".join(current_words)
+                    })
+                    current_words = []
+                    segment_start = None
+
             if segment_start is None:
-                segment_start = word.start
+                segment_start = word_start
 
-            current_words.append(word.word.strip())
-            duration = word.end - segment_start
+            current_words.append(word_text)
+            prev_end = word.end
+            duration = prev_end - segment_start
 
+            # Dela vid max ord eller max tid
             if len(current_words) >= max_words or duration >= max_duration:
                 segments.append({
                     "start": segment_start,
-                    "end": word.end,
+                    "end": prev_end,
                     "text": " ".join(current_words)
                 })
                 current_words = []
